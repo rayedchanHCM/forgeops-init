@@ -1,0 +1,22 @@
+# Default values for openam-dj.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+
+global:
+  image:
+    repository: gcr.io/engineering-devops
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Child Chart overrides
+
+configstore:
+  djInstance: configstore
+

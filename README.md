@@ -1,155 +1,116 @@
-# forgeops-init
+# ForgeRock DevOps and Cloud Deployment 
 
-If you are using this repository with the 5.0.0 release as documented in the 
-DevOps guide, check out the `release/5.0.0` branch. Otherwise, check out the 
-`master` branch.
+This repository is the master (bleeding edge) for the Docker and Kubernetes DevOps artifacts. The master targets
+features that are still in development and may not be stable.
+
+The DevOps artifacts for the 5.5.0 ForgeRock Identity Platform are on the `release/5.5.0` branch of this repository.
+
+If you have the source checked out from git:
+
+```bash
+git checkout release/5.5.0 
+```
+
+NOTE: ForgeRock customers and partners who have access to the ForgeRock private-releases maven repository
+can use the maven pom.xml to build docker images for *released* versions of the products. You
+must have a settings.xml file with credentials for repository access. See the [backstage
+article](https://backstage.forgerock.com/knowledge/kb/article/a74096897)
 
 
-## About This Repository
+# Documentation 
 
-This repository contains an initial skeleton configuration for the ForgeRock 
-Identity Platform on Kubernetes. The initial configuration can be used with the 
-[forgeops](https://stash.forgerock.org/projects/CLOUD/repos/forgeops) repository 
-when deploying the reference DevOps examples. 
+The [Draft ForgeRock DevOps Guide](https://ea.forgerock.com/docs/platform/doc/backstage/devops-guide/index.html)
+tracks the master branch.
 
-Use this repository as a starting point for your own custom configuration 
-repository for the ForgeRock Identity Platform. For more information about 
-creating a cutsom configuration repository, see the chapter _Creating a Custom 
-Configuration Repository_ in the _ForgeRock DevOps Guide_.
+The documentation for the the 5.5.0 release can be found on 
+[backstage](https://backstage.forgerock.com/docs/platform/5.5/devops-guide)
+as well as the previous [5.0.0 release documentation](https://backstage.forgerock.com/docs/platform/5/devops-guide).
 
-Kubernetes mounts configuration files as a volume at runtime by cloning the 
-configuration repository in an init container and making the configuration 
-available to the component containers.
+
+# Quick Start
  
+* Knowledge of Kubernetes and Helm is assumed. Please read 
+the [helm documentation](https://github.com/kubernetes/helm/blob/master/docs/index.md) before proceeding.
+* This assumes minikube is running (8G of RAM), and helm and kubectl are installed. 
+* See bin/setup.sh for a sample setup script
 
-## Project Layout 
+```sh
 
-The layout presented here is purely an example of how you might organize your configuration. The basic
-idea is that configurations are organized by environments (dev, qa, production, prod_east, prod_west, etc.)
+# build all the docker images
+cd docker
+eval $(minikube docker-env)
+mvn
+cd ..
+# Make sure you have the ingress controller add on
+minikube addon enable ingress
 
-The directory structure is:  `/{environment}/{component}/{project}/* `
+helm init
 
-Where:
-* environment is one of default, dev,qa, prod, etc. Environment names may be mapped to Kubernetes namespaces. It
-is recommended they are short, lower case, and avoid any non alphanumeric characters. The "default" environment
-is a common Kubernetes namespace used on Minikube. This is the recommended folder for out of box deployment.
-* component is one of: am, dj, ig, idm
-* project - is a specific configuration for that component. For example, "my-test-config", "current", "canary".
-These names may be also be mapped as part of the environment, so it is best is to avoid special characters
-other than '-'. 
+# Now copy helm/custom.yaml, and edit for your environment. 
 
+cd helm/
 
-Nested underneath the project folder are the configuration files for the component. For example, json files exported by OpenIDM or 
-by amster. 
+# If you want to use the demonstration Helm chart repo, you can use this:
+helm repo add forgerock https://storage.googleapis.com/forgerock-charts/
+helm repo update
+# deploy the AM development example. Deploys AM, amster, and DJ config store.
+# Using forgerock/ as a prefix deploys from the chart repository. For local development use the folder ./cmp-am-dev
+helm install -f my-custom.yaml forgerock/cmp-am-dev 
 
-In addition, the following top-level directories are suggested:
-
-* bin/  holds utility scripts that are useful for managing configuration files. In the future this may include scripts 
- to auto-migrate configuration from one environment to another.
-* common/{component}  Holds any configuration files which are 100% common to all environments. 
-
-
-## Migration
-
-Migration from one environment to another (for example from dev to QA to prod) is done manually by
-copying files from one environment to another and adjusting those files as required (for example,
-replacing dev server names with QA).  You may wish to use additional tools or scripts to help automate this
-process.
+# If you running helm charts from this source code:
+./update-deps.sh   
+helm install -f my-custom.yaml cmp-am-dev
 
 
-A sample workflow that you might implement:
 
-* A feature is developed in the default or dev environment, and exported/saved to the {project} folder.
-* The feature and/or the entire configuration is copied to the next environment. This can be scripted and 
- triggered by a git commit hook. The
- scripts can copy files and perform environment specific search and replace. 
-* If a feature is consistent in all environments, it can be exported to common/{component}. You would
-merge the features in common/ into the target environment.
-* The resulting merged configuration is committed to git. Automated CI/CD tools may run checks on this
-commit to validate the configuration is functional. 
+# Or, deploy idm 
+helm install -f my-custom.yaml ./cmp-idm-dj-postgres
 
+#Get your minikube ip
+minikube ip
 
-## Repository Organization 
+# You can put DNS entries in an entry in /etc/hosts. For example:
+# 192.168.99.100 openam.default.example.com openidm.default.example.com openig.default.example.com
 
-This skeleton repository contains the following top-level directories:
- 
-  * `bin/` - Holds utility scripts that are useful for managing configuration 
-    files. For example, you could use the `bin` directory for scripts that 
-    automatically migrate configuration from one environment to another.
-  * `common/{component}` - Holds configuration files that are common to all 
-    environments. 
-  * `{environment}/{component}/{project}` - Holds one or more sets of 
-    configuration files for a component using the following path naming 
-    conventions: 
-    * {environment} - A deployment environment, for example, default, dev, qa, 
-      production, prod_us_east, prod_eur, etc. The skeleton repository comes 
-      populated with the `default` environment, which includes starting 
-      configurations. You are responsible for creating environment directories 
-      other than `default` that are pertinent to your organization. Because you  
-      might want to map environment names to Kubernetes namespaces, it is 
-      recommended that you create environment names consisting only of lowercase 
-      characters, numbers, and hyphens. 
-    * {component} - A component of the ForgeRock Identity Platform. Specify am, 
-      idm, or ig. (Note that other subdirectories under `default` contain a 
-      variety of supporting files used for various purposes.)
-    * {project} - An identifier for a set of configuration files.
-       
-The following sets of configuration files are provided in the skeleton 
-configuration:
-       
-  * `default/am/empty-import` - Contains configuration that populates AM with
-    no configuration. 
-  * `default/idm/sync-with-ldap-bidirectional` - Contains configuration that 
-    implements bidirectional data synchronization between IDM and LDAP.
-  * `default/ig/basic-sample` - Contains configuration to deply the simplest 
-    possible IG server.
-    
-After creating your own configuration repository, you might have custom sets of 
-configuration files similar to the following:
+open http://openam.default.example.com
 
-  * `qa/am/oauth2` - Deploy AM as an OAuth 2.0 server in the QA environment.
-  * `prod_asia/ig/gateway` - Deploy an IG gateway in the Asia production 
-    environment.   
+# Alternartively, if you use something like xip.io, you access AM using the minikube IP:
+
+open http://openam.default.192.168.99.100.xip.io/openam
 
 
-## Migration Workflow
+```
 
-Migrate from one environment to another by copying files, and then adjusting the 
-files as required. 
+To change the deployment parameters, FQDN, etc. please see the comments in helm/custom.yaml.
 
-The following is an example workflow that you might use to configure AM as an 
-OAuth 2.0 server. In this workflow, you initialize your configuration repository
-to support development, QA, and production environment, and then you perform 
-development in the development environment and migrate to the QA and production 
-environments as follows:
 
-* __Initialization.__ Create the `dev`, `qa`, and `prod` environment directories
-in your configuration repository, and copy the 
-`default/am/empty-import` directory to the `dev/am/oauth2` directory. Then 
-orchestrate the AM and DS deployment example, specifying the `dev/am/oauth2` 
-directory as the `configPath`.
-* __Development.__ Log in to the AM console and configure AM as necessary. The 
-`git` container periodically exports the configuration to the `autosave_am` 
-branch. When you are ready to move the configuration to QA, merge a pull request 
-on the `autosave_am` branch into the `master` branch. Then copy the 
-configuration files to the `qa/am/oauth2` directory. You could do this by 
-triggering a Git commit hook that runs a script that copies the files and 
-performs environment-specific search and replace. For example, you might need to
- replace development server names with QA server names. You can create 
- additional tools or scripts to automate this process.
-* __QA.__ Orchestrate the ForgeRock Identity Platform, specifying the 
-`qa/am/oauth2` directory as the `configPath`. Conduct QA testing. If 
-configuration changes need to be made as a result of QA testing, make the 
-changes in the `dev` configuration, merge them into the `qa` configuration, 
-and reiterate testing. When testing is complete, copy the configuration files 
-into the `prod/am/oauth2` directory.    
-* __Production.__ Orchestrate the ForgeRock Identity Platform, specifying the 
-`prod/am/oauth2` directory as the `configPath`. 
+# Contents 
 
-Notes:
+* docker/ -  contains the Dockerfiles for the various containers. 
+* helm/ - contains Kubernetes helm charts to deploy those containers. See the helm/README.md
+* etc/ - contains various scripts and utilities
+* bin/  - This is a symnbolic link to docker/toolbox/bin. It contains utility shell scripts to deploy the helm charts
 
-1. You can configure automated CI/CD tools to run checks at various points in 
-the workflow to validate that your configuration is functional.
-1. Configuration that is consistent in all environments can reside in the
-`common` directory. Merge the features in common/ into the target environment
-as necessary.
+# Significant Changes
+
+* The ingress now uses the namespace in the FQDN. For example, openam.default.example.com, where default
+is the namespace. This allows you to run multiple instances on the same cluster
+* Most charts now use generated Helm release names (i.e. random). This is necessary because 
+release names needs to be unique across the cluster.
+* Composite charts have been introduced. Charts starting with helm/cmp* are composite charts constructed from
+other child charts.
+
+# Setting a namespace
+
+If you do not want to use the 'default' namespace, set your namespace using:
+
+kubectl config set-context $(kubectl config current-context) --namespace=<insert-namespace-name-here>
+
+
+# Known Issues
+
+* minkube PVCs can not be accessed by non root containers. This is related to the minikube hostpath PVC provisioner.
+This means that you can not use PVCs in minikube as DJ now runs as the forgerock user. The default DJ persistence
+strategy is now set to false by default, meaning the DJ data will vanish once the pod is gone. 
+Set this to true on GKE or other Cloud environments by setting `djPersistence: true` in the value overrides.
+See https://github.com/kubernetes/kubernetes/issues/2630.

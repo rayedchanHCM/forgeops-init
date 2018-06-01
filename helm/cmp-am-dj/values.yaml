@@ -1,0 +1,32 @@
+# Default values for openam-dj.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+
+global:
+  image:
+    repository: forgerock
+    tag: 5.5.0
+
+  
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Child Chart overrides
+
+userstore:
+  djInstance: userstore
+
+configstore:
+  djInstance: configstore
+
+ctsstore:
+  djInstance: ctsstore
+  bootstrapType: cts
+
+
