@@ -25,4 +25,4 @@ spec:
       - path: /openam
         backend:
           serviceName: openam
-          servicePort: 80
+          servicePort: 8080
